@@ -6,7 +6,8 @@
     "@semantic-release/changelog",
     ["@semantic-release/exec", {
       "verifyConditionsCmd": "echo 'Verifying conditions...'",
-      "prepareCmd": "python -c \"import re; version='${nextRelease.version}'; open('pyproject.toml', 'r+').write(re.sub(r'version = \\\"[0-9\\\\.]+\\\"', f'version = \\\"{version}\\\"', open('pyproject.toml').read())); open('setup.py', 'r+').write(re.sub(r'version=\\\"[0-9\\\\.]+\\\"', f'version=\\\"{version}\\\"', open('setup.py').read())); open('fastapi_profiler/__init__.py', 'r+').write(re.sub(r'__version__ = \\\"[0-9\\\\.]+\\\"', f'__version__ = \\\"{version}\\\"', open('fastapi_profiler/__init__.py').read()))\""
+      "prepareCmd": "python -c \"import re; version='${nextRelease.version}'; open('pyproject.toml', 'r+').write(re.sub(r'version = \\\"[0-9\\\\.]+\\\"', f'version = \\\"{version}\\\"', open('pyproject.toml').read())); open('setup.py', 'r+').write(re.sub(r'version=\\\"[0-9\\\\.]+\\\"', f'version=\\\"{version}\\\"', open('setup.py').read())); open('fastapi_profiler/__init__.py', 'r+').write(re.sub(r'__version__ = \\\"[0-9\\\\.]+\\\"', f'__version__ = \\\"{version}\\\"', open('fastapi_profiler/__init__.py').read()))\"",
+      "publishCmd": "poetry config pypi-token.pypi ${PYPI_TOKEN} && poetry build && poetry publish --no-interaction"
     }],
     ["@semantic-release/git", {
       "assets": ["pyproject.toml", "setup.py", "fastapi_profiler/__init__.py", "CHANGELOG.md"],
