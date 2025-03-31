@@ -6,8 +6,6 @@ This directory contains detailed documentation for the FastAPI Profiler.
 
 - [Installation](installation.md)
 - [Configuration](configuration.md)
-- [Dashboard](dashboard.md)
-- [API Reference](api-reference.md)
 - [Extending](extending.md)
 
 ## Quick Links

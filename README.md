@@ -1,7 +1,7 @@
 # FastAPI Profiler Lite
 
 <p align="center">
-  <img src="docs/images/logo.png" alt="FastAPI Profiler Lite Logo" width="150"/>
+  <img src="https://github.com/al91liwo/fastapi-profiler/raw/main/docs/images/logo.png" alt="FastAPI Profiler Lite Logo" width="150"/>
 </p>
 
 <p align="center">
@@ -13,7 +13,7 @@
 A lightweight, zero-configuration performance profiler for FastAPI applications. Monitor your API performance in real-time without external dependencies.
 
 <p align="center">
-  <img src="docs/images/dashboard-demo.png" alt="Dashboard Demo" width="800"/>
+  <img src="https://github.com/al91liwo/fastapi-profiler/raw/main/docs/images/dashboard-demo.png" alt="Dashboard Demo" width="800"/>
 </p>
 
 ## Why FastAPI Profiler?
@@ -63,10 +63,10 @@ That's it! Visit `/profiler` to see the performance dashboard.
 
 ## Documentation
 
-- [Installation](docs/installation.md)
-- [Configuration](docs/configuration.md)
-- [Contributing](docs/contributing.md)
-- [Extending](docs/extending.md)
+- [Installation](https://github.com/al91liwo/fastapi-profiler/blob/main/docs/installation.md)
+- [Configuration](https://github.com/al91liwo/fastapi-profiler/blob/main/docs/configuration.md)
+- [Contributing](https://github.com/al91liwo/fastapi-profiler/blob/main/docs/contributing.md)
+- [Extending](https://github.com/al91liwo/fastapi-profiler/blob/main/docs/extending.md)
 
 ## License
 

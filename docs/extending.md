@@ -31,4 +31,4 @@ Consider extending FastAPI Profiler when:
 
 ## Contributing Extensions
 
-If you develop a useful extension, consider contributing it back to the project! See the [Contributing Guide](../CONTRIBUTING.md) for details on how to submit your extensions for inclusion in the main project.
+If you develop a useful extension, consider contributing it back to the project! See the [Contributing Guide](contributing.md) for details on how to submit your extensions for inclusion in the main project.
