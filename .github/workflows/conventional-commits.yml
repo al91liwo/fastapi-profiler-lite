@@ -15,3 +15,5 @@ jobs:
           error: 'Your commit message must follow the Conventional Commits standard: https://www.conventionalcommits.org'
           checkAllCommitMessages: true
           accessToken: ${{ secrets.GITHUB_TOKEN }}
+          excludeTitle: true
+          excludeDescription: true
