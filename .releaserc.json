@@ -1,0 +1,19 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    "@semantic-release/changelog",
+    ["@semantic-release/exec", {
+      "verifyConditionsCmd": "echo 'Verifying conditions...'",
+      "prepareCmd": "python -c \"import re; version='${nextRelease.version}'; open('pyproject.toml', 'r+').write(re.sub(r'version = \\\"[0-9\\\\.]+\\\"', f'version = \\\"{version}\\\"', open('pyproject.toml').read())); open('setup.py', 'r+').write(re.sub(r'version=\\\"[0-9\\\\.]+\\\"', f'version=\\\"{version}\\\"', open('setup.py').read())); open('fastapi_profiler/__init__.py', 'r+').write(re.sub(r'__version__ = \\\"[0-9\\\\.]+\\\"', f'__version__ = \\\"{version}\\\"', open('fastapi_profiler/__init__.py').read()))\""
+    }],
+    ["@semantic-release/git", {
+      "assets": ["pyproject.toml", "setup.py", "fastapi_profiler/__init__.py", "CHANGELOG.md"],
+      "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+    }],
+    ["@semantic-release/github", {
+      "assets": []
+    }]
+  ]
+}
