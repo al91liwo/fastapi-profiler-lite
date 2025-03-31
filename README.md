@@ -8,6 +8,8 @@
   <a href="https://pypi.org/project/fastapi-profiler-lite/"><img src="https://img.shields.io/pypi/v/fastapi-profiler-lite?color=blue" alt="PyPI version"></a>
   <a href="https://github.com/al91liwo/fastapi-profiler/blob/main/LICENSE"><img src="https://img.shields.io/github/license/al91liwo/fastapi-profiler" alt="License"></a>
   <a href="https://github.com/al91liwo/fastapi-profiler/stargazers"><img src="https://img.shields.io/github/stars/al91liwo/fastapi-profiler" alt="GitHub stars"></a>
+  <a href="https://github.com/al91liwo/fastapi-profiler/actions/workflows/python-package.yml"><img src="https://github.com/al91liwo/fastapi-profiler/actions/workflows/python-package.yml/badge.svg" alt="CI Status"></a>
+  <a href="https://github.com/al91liwo/fastapi-profiler/actions/workflows/release.yml"><img src="https://github.com/al91liwo/fastapi-profiler/actions/workflows/release.yml/badge.svg" alt="Release Status"></a>
 </p>
 
 A lightweight, zero-configuration performance profiler for FastAPI applications. Monitor your API performance in real-time without external dependencies.
