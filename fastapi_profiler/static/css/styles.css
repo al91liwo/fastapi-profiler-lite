@@ -1,45 +1,54 @@
 /* Main dashboard styles */
 .card {
-    @apply bg-white rounded-lg shadow-md overflow-hidden;
+    @apply bg-gray-50 border border-gray-100 rounded-md shadow-sm overflow-hidden transition-all duration-200;
+}
+.card:hover {
+    @apply shadow;
 }
 .card-header {
-    @apply px-6 py-4 bg-gray-50 border-b border-gray-200;
+    @apply px-6 py-4 bg-white border-b border-gray-200;
 }
 .card-body {
     @apply p-6;
 }
 .stat-card {
-    @apply flex flex-col items-center justify-center p-4 bg-white rounded-lg shadow-md transition-all duration-200;
+    @apply flex flex-col items-center justify-center p-4 bg-white rounded-md border border-gray-100 shadow-sm transition-all duration-200;
 }
 .stat-card:hover {
-    @apply shadow-lg transform -translate-y-1;
+    @apply shadow transform -translate-y-1 border-gray-200;
+}
+.metric-value {
+    @apply font-mono font-semibold transition-all duration-300;
 }
 .table-container {
-    @apply overflow-x-auto;
+    @apply overflow-x-auto rounded-md;
 }
 .data-table {
     @apply min-w-full divide-y divide-gray-200;
 }
 .data-table th {
-    @apply px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+    @apply px-4 py-3 bg-gray-100 text-left text-xs font-medium text-gray-600 uppercase tracking-wider;
 }
 .data-table td {
     @apply px-4 py-3 whitespace-nowrap text-sm;
 }
 .data-table tr {
-    @apply hover:bg-gray-50;
+    @apply hover:bg-gray-100 transition-colors duration-150;
+}
+.data-table tr:nth-child(even) {
+    @apply bg-gray-50;
 }
 .tab {
-    @apply px-4 py-2 font-medium text-gray-600 border-b-2 border-transparent cursor-pointer;
+    @apply px-4 py-2 font-medium text-gray-600 border-b-2 border-transparent cursor-pointer transition-all duration-200;
 }
 .tab.active {
-    @apply text-indigo-600 border-indigo-500;
+    @apply text-green-600 border-green-500 font-semibold;
 }
-.tab:hover {
-    @apply text-indigo-500;
+.tab:hover:not(.active) {
+    @apply text-gray-800 border-gray-200;
 }
 .chart-container {
-    @apply relative h-64;
+    @apply relative h-64 p-2 bg-white rounded-md;
 }
 
 /* Loading indicator */
@@ -50,7 +59,7 @@
     left: 0;
     width: 100%;
     height: 3px;
-    background: linear-gradient(to right, transparent, rgb(79, 70, 229), transparent);
+    background: linear-gradient(to right, transparent, rgb(22, 163, 74), transparent);
     animation: loading-bar 1.5s infinite;
     z-index: 9999;
 }
@@ -68,7 +77,7 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background-color: rgb(79, 70, 229);
+    background-color: rgb(22, 163, 74);
     animation: pulse 0.5s ease-out;
     z-index: 9999;
 }
@@ -80,7 +89,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(79, 70, 229, 0.05);
+    background-color: rgba(22, 163, 74, 0.05);
     border-radius: 8px;
     animation: chart-pulse 1s ease-out;
     pointer-events: none;
@@ -96,12 +105,7 @@
     100% { transform: scale(20); opacity: 0; }
 }
 
-/* Refresh button animation */
+/* Refresh button styles - no animation */
 .refreshing {
-    animation: spin 0.5s linear;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    opacity: 0.8;
 }

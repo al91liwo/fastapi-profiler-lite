@@ -231,6 +231,127 @@ class Profiler:
             """Return recent profile data as JSON."""
             return self.middleware.profiles if self.middleware else []
 
+        @router.get("/api/dashboard-data")
+        async def get_dashboard_data():
+            """Return pre-calculated data for the dashboard."""
+            if not self.middleware or not self.middleware.profiles:
+                return {
+                    "timestamp": time.time(),
+                    "overview": {
+                        "total_requests": 0,
+                        "avg_response_time": 0,
+                        "max_response_time": 0,
+                        "unique_endpoints": 0,
+                    },
+                    "time_series": {"response_times": []},
+                    "endpoints": {"stats": [], "distribution": []},
+                    "requests": {"recent": []},
+                }
+
+            profiles = list(self.middleware.profiles)
+
+            # Calculate overview stats
+            total_requests = len(profiles)
+            avg_time = (
+                sum(p["total_time"] for p in profiles) / total_requests
+                if total_requests
+                else 0
+            )
+            max_time = max(p["total_time"] for p in profiles) if profiles else 0
+            unique_endpoints = len(
+                set((p["method"] + " " + p["path"]) for p in profiles)
+            )
+
+            # Calculate endpoint stats
+            endpoint_map = {}
+            for profile in profiles:
+                key = profile["method"] + " " + profile["path"]
+                if key not in endpoint_map:
+                    endpoint_map[key] = {
+                        "method": profile["method"],
+                        "path": profile["path"],
+                        "count": 0,
+                        "total": 0,
+                        "min": float("inf"),
+                        "max": 0,
+                    }
+
+                stats = endpoint_map[key]
+                stats["count"] += 1
+                stats["total"] += profile["total_time"]
+                stats["min"] = min(stats["min"], profile["total_time"])
+                stats["max"] = max(stats["max"], profile["total_time"])
+
+            endpoint_stats = []
+            for stats in endpoint_map.values():
+                endpoint_stats.append(
+                    {
+                        "method": stats["method"],
+                        "path": stats["path"],
+                        "count": stats["count"],
+                        "avg": stats["total"] / stats["count"],
+                        "min": stats["min"],
+                        "max": stats["max"],
+                    }
+                )
+
+            # Sort by average time for slowest endpoints
+            slowest_endpoints = sorted(
+                endpoint_stats, key=lambda x: x["avg"], reverse=True
+            )
+
+            # Prepare time series data
+            sorted_profiles = sorted(profiles, key=lambda p: p["start_time"])
+            response_times = [
+                {
+                    "timestamp": p["start_time"],
+                    "value": p["total_time"] * 1000,  # Convert to ms
+                    "key": p["method"] + " " + p["path"],
+                }
+                for p in sorted_profiles
+            ]
+
+            # Count requests by method
+            method_counts = {}
+            for profile in profiles:
+                method = profile["method"]
+                if method not in method_counts:
+                    method_counts[method] = 0
+                method_counts[method] += 1
+
+            method_distribution = [
+                {"method": method, "count": count}
+                for method, count in method_counts.items()
+            ]
+
+            # Endpoint distribution (top 10 by count)
+            endpoint_distribution = sorted(
+                endpoint_stats, key=lambda x: x["count"], reverse=True
+            )[:10]
+
+            # Recent requests (last 100)
+            recent_requests = sorted(
+                profiles, key=lambda p: p["start_time"], reverse=True
+            )[:100]
+
+            return {
+                "timestamp": time.time(),
+                "overview": {
+                    "total_requests": total_requests,
+                    "avg_response_time": avg_time * 1000,  # Convert to ms
+                    "max_response_time": max_time * 1000,  # Convert to ms
+                    "unique_endpoints": unique_endpoints,
+                },
+                "time_series": {"response_times": response_times},
+                "endpoints": {
+                    "stats": endpoint_stats,
+                    "slowest": slowest_endpoints[:5],
+                    "distribution": endpoint_distribution,
+                    "by_method": method_distribution,
+                },
+                "requests": {"recent": recent_requests},
+            }
+
         @router.get("/api/profile/{profile_id}")
         async def get_profile(profile_id: str):
             """Return a specific profile by ID."""

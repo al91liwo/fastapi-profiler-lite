@@ -1,5 +1,5 @@
 // Global state
-let profiles = [];
+let dashboardData = {};
 let refreshInterval;
 let apiPath = '';
 let currentSortColumn = 'timestamp';
@@ -11,7 +11,7 @@ let requestsByMethodChart;
 let endpointDistributionChart;
 
 // Simple formatter for time display
-const formatTime = (seconds) => (seconds * 1000).toFixed(2);
+const formatTime = (ms) => ms.toFixed(2);
 
 // Format relative time for better readability
 const formatTimeAgo = (timestamp) => {
@@ -27,25 +27,25 @@ const formatTimeAgo = (timestamp) => {
     return date.toLocaleString();
 };
 
-// Fetch profile data from API
+// Fetch dashboard data from API
 async function fetchData() {
     try {
-        // Show a subtle loading indicator
         document.body.classList.add('loading-data');
         
-        const response = await fetch(apiPath);
+        const response = await fetch(`${apiPath.replace('/profiles', '')}/api/dashboard-data`);
         if (!response.ok) {
             console.error('Failed to fetch data:', response.statusText);
-            return;
+            return false;
         }
 
-        const newProfiles = await response.json();
+        const newData = await response.json();
         
         // Check if we have new data
-        const hasNewData = newProfiles.length !== profiles.length;
+        const hasNewData = !dashboardData.timestamp || 
+                          newData.timestamp > dashboardData.timestamp;
         
-        // Update profiles
-        profiles = newProfiles;
+        // Update data
+        dashboardData = newData;
         
         // Update the dashboard
         updateDashboard();
@@ -53,7 +53,6 @@ async function fetchData() {
         // Record the update time
         chartState.lastUpdateTime = Date.now();
         
-        // Remove loading indicator
         document.body.classList.remove('loading-data');
         
         return hasNewData;
@@ -66,8 +65,8 @@ async function fetchData() {
 
 // Update all dashboard components with new data
 function updateDashboard() {
-    if (!profiles.length) {
-        console.log('No profile data available');
+    if (!dashboardData.timestamp) {
+        console.log('No dashboard data available');
         return;
     }
 
@@ -81,83 +80,41 @@ function updateDashboard() {
 
 // Update stat cards
 function updateStats() {
-    document.getElementById('stat-total-requests').textContent = profiles.length;
-
-    const avgResponseTime = profiles.reduce((sum, p) => sum + p.total_time, 0) / profiles.length;
-    document.getElementById('stat-avg-response-time').textContent = formatTime(avgResponseTime) + ' ms';
-
-    const maxResponseTime = Math.max(...profiles.map(p => p.total_time));
-    document.getElementById('stat-max-response-time').textContent = formatTime(maxResponseTime) + ' ms';
-
-    const uniqueEndpoints = new Set(profiles.map(p => p.method + ' ' + p.path)).size;
-    document.getElementById('stat-unique-endpoints').textContent = uniqueEndpoints;
-}
-
-// Group profiles by endpoint
-function getEndpointStats() {
-    const endpointMap = new Map();
-
-    profiles.forEach(profile => {
-        const key = profile.method + ' ' + profile.path;
-
-        if (!endpointMap.has(key)) {
-            endpointMap.set(key, {
-                method: profile.method,
-                path: profile.path,
-                count: 0,
-                total: 0,
-                min: Infinity,
-                max: 0
-            });
-        }
-
-        const stats = endpointMap.get(key);
-        stats.count += 1;
-        stats.total += profile.total_time;
-        stats.min = Math.min(stats.min, profile.total_time);
-        stats.max = Math.max(stats.max, profile.total_time);
-    });
-
-    // Calculate averages and convert to array
-    return Array.from(endpointMap.values()).map(stats => {
-        return {
-            ...stats,
-            avg: stats.total / stats.count
-        };
-    });
+    const stats = dashboardData.overview;
+    document.getElementById('stat-total-requests').textContent = stats.total_requests;
+    document.getElementById('stat-avg-response-time').textContent = formatTime(stats.avg_response_time) + ' ms';
+    document.getElementById('stat-max-response-time').textContent = formatTime(stats.max_response_time) + ' ms';
+    document.getElementById('stat-unique-endpoints').textContent = stats.unique_endpoints;
 }
 
 // Update slowest endpoints table
 function updateSlowestEndpointsTable() {
-    const endpointStats = getEndpointStats()
-        .sort((a, b) => b.avg - a.avg)
-        .slice(0, 5);
-
+    const slowestEndpoints = dashboardData.endpoints.slowest || [];
     const tableBody = document.getElementById('slowest-endpoints-table').querySelector('tbody');
     tableBody.innerHTML = '';
 
-    endpointStats.forEach(stat => {
+    slowestEndpoints.forEach(stat => {
         const row = document.createElement('tr');
 
         row.innerHTML = `
             <td class="text-gray-700">${stat.method}</td>
             <td class="font-medium text-gray-900">${stat.path}</td>
-            <td class="text-indigo-600 font-medium">${formatTime(stat.avg)} ms</td>
-            <td class="text-red-600">${formatTime(stat.max)} ms</td>
+            <td class="text-indigo-600 font-medium">${formatTime(stat.avg * 1000)} ms</td>
+            <td class="text-red-600">${formatTime(stat.max * 1000)} ms</td>
             <td class="text-gray-500">${stat.count}</td>
         `;
 
         tableBody.appendChild(row);
     });
 
-    if (endpointStats.length === 0) {
+    if (slowestEndpoints.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-gray-500">No data available</td></tr>`;
     }
 }
 
 // Update endpoints table
 function updateEndpointsTable() {
-    let endpointStats = getEndpointStats();
+    let endpointStats = [...dashboardData.endpoints.stats];
     const searchTerm = document.getElementById('endpoint-search')?.value?.toLowerCase() || '';
 
     // Apply search filter
@@ -204,9 +161,9 @@ function updateEndpointsTable() {
         row.innerHTML = `
             <td class="text-gray-700">${stat.method}</td>
             <td class="font-medium text-gray-900">${stat.path}</td>
-            <td class="text-indigo-600 font-medium">${formatTime(stat.avg)} ms</td>
-            <td class="text-red-600">${formatTime(stat.max)} ms</td>
-            <td class="text-green-600">${formatTime(stat.min)} ms</td>
+            <td class="text-indigo-600 font-medium">${formatTime(stat.avg * 1000)} ms</td>
+            <td class="text-red-600">${formatTime(stat.max * 1000)} ms</td>
+            <td class="text-green-600">${formatTime(stat.min * 1000)} ms</td>
             <td class="text-gray-500">${stat.count}</td>
         `;
 
@@ -220,12 +177,12 @@ function updateEndpointsTable() {
 
 // Update requests table
 function updateRequestsTable() {
-    let filteredProfiles = [...profiles];
+    let recentRequests = [...dashboardData.requests.recent];
     const searchTerm = document.getElementById('request-search')?.value?.toLowerCase() || '';
 
     // Apply search filter
     if (searchTerm) {
-        filteredProfiles = filteredProfiles.filter(profile => 
+        recentRequests = recentRequests.filter(profile => 
             profile.path.toLowerCase().includes(searchTerm) || 
             profile.method.toLowerCase().includes(searchTerm)
         );
@@ -233,7 +190,7 @@ function updateRequestsTable() {
 
     // Apply sorting
     if (currentSortColumn) {
-        filteredProfiles.sort((a, b) => {
+        recentRequests.sort((a, b) => {
             let valA, valB;
 
             switch(currentSortColumn) {
@@ -259,7 +216,7 @@ function updateRequestsTable() {
     const tableBody = document.getElementById('requests-table').querySelector('tbody');
     tableBody.innerHTML = '';
 
-    filteredProfiles.slice(0, 100).forEach(profile => {
+    recentRequests.forEach(profile => {
         const row = document.createElement('tr');
 
         // Define row color based on response time
@@ -271,13 +228,13 @@ function updateRequestsTable() {
             <td class="text-gray-500">${formatTimeAgo(profile.start_time)}</td>
             <td class="text-gray-700">${profile.method}</td>
             <td class="font-medium text-gray-900">${profile.path}</td>
-            <td class="${timeClass} font-medium">${formatTime(profile.total_time)} ms</td>
+            <td class="${timeClass} font-medium">${formatTime(profile.total_time * 1000)} ms</td>
         `;
 
         tableBody.appendChild(row);
     });
 
-    if (filteredProfiles.length === 0) {
+    if (recentRequests.length === 0) {
         tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-gray-500">No data available</td></tr>`;
     }
 }
@@ -299,22 +256,21 @@ let chartState = {
 
 // Update response time chart
 function updateResponseTimeChart() {
-    // Get the most recent 50 requests, sorted by time
-    const sortedProfiles = [...profiles].sort((a, b) => a.start_time - b.start_time);
-    const last50Profiles = sortedProfiles.slice(-50);
+    // Get time series data
+    const responseTimesData = dashboardData.time_series.response_times || [];
     
     // Check if we have new data
-    const hasNewData = profiles.length !== chartState.lastProfileCount;
-    chartState.lastProfileCount = profiles.length;
+    const hasNewData = responseTimesData.length !== chartState.lastProfileCount;
+    chartState.lastProfileCount = responseTimesData.length;
     
     // Prepare data points in the format Chart.js expects
-    const dataPoints = last50Profiles.map(p => ({
-        x: new Date(p.start_time * 1000),
-        y: p.total_time * 1000
+    const dataPoints = responseTimesData.map(p => ({
+        x: new Date(p.timestamp * 1000),
+        y: p.value
     }));
 
     // Store the data for tooltip access
-    chartState.currentChartData = last50Profiles;
+    chartState.currentChartData = responseTimesData;
 
     if (responseTimeChart) {
         // Save hidden state before update
@@ -362,26 +318,26 @@ function updateResponseTimeChart() {
                 datasets: [{
                     label: 'Response Time (ms)',
                     data: dataPoints,
-                    borderColor: 'rgb(79, 70, 229)',
-                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                    borderWidth: 2,
+                    borderColor: 'rgb(22, 163, 74)',
+                    backgroundColor: 'rgba(22, 163, 74, 0.1)',
+                    borderWidth: 2.5,
                     fill: true,
                     tension: 0.3,
-                    pointRadius: 3,
-                    pointHoverRadius: 5,
-                    pointBackgroundColor: 'rgb(79, 70, 229)',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: 'rgb(22, 163, 74)',
                     pointBorderColor: 'white',
-                    pointBorderWidth: 1,
+                    pointBorderWidth: 1.5,
                     // Add gradient fill for better visual effect
                     backgroundColor: (context) => {
                         const chart = context.chart;
                         const {ctx, chartArea} = chart;
-                        if (!chartArea) return 'rgba(79, 70, 229, 0.1)';
+                        if (!chartArea) return 'rgba(22, 163, 74, 0.1)';
                         
                         // Create gradient
                         const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-                        gradient.addColorStop(0, 'rgba(79, 70, 229, 0.01)');
-                        gradient.addColorStop(1, 'rgba(79, 70, 229, 0.2)');
+                        gradient.addColorStop(0, 'rgba(22, 163, 74, 0.01)');
+                        gradient.addColorStop(1, 'rgba(22, 163, 74, 0.15)');
                         return gradient;
                     }
                 }]
@@ -451,7 +407,7 @@ function updateResponseTimeChart() {
                                 if (!context || !context[0]) return 'Unknown';
                                 const index = context[0].dataIndex;
                                 const profile = chartState.currentChartData[index];
-                                return profile ? `${profile.method} ${profile.path}` : 'Unknown';
+                                return profile && profile.key ? profile.key : 'Unknown';
                             },
                             label: (context) => {
                                 if (!context || !context.parsed) return '';
@@ -472,22 +428,16 @@ function updateRequestsByMethodChart() {
         requestsByMethodChart.destroy();
     }
     
-    // Count requests by HTTP method
-    const methodCounts = {};
-    profiles.forEach(profile => {
-        if (!methodCounts[profile.method]) {
-            methodCounts[profile.method] = 0;
-        }
-        methodCounts[profile.method]++;
-    });
-
+    // Get method distribution data
+    const methodDistribution = dashboardData.endpoints.by_method || [];
+    
     // Prepare data for chart
-    const methods = Object.keys(methodCounts);
-    const counts = methods.map(method => methodCounts[method]);
+    const methods = methodDistribution.map(item => item.method);
+    const counts = methodDistribution.map(item => item.count);
     
     // Standard colors for HTTP methods
     const colorMap = {
-        'GET': 'rgb(52, 211, 153)',
+        'GET': 'rgb(22, 163, 74)',
         'POST': 'rgb(79, 70, 229)',
         'PUT': 'rgb(251, 191, 36)',
         'DELETE': 'rgb(239, 68, 68)',
@@ -566,15 +516,13 @@ function updateEndpointDistributionChart() {
         endpointDistributionChart.destroy();
     }
     
-    // Get top 10 endpoints by request count
-    const endpointStats = getEndpointStats()
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
+    // Get endpoint distribution data
+    const endpointDistribution = dashboardData.endpoints.distribution || [];
 
     // Prepare data for chart
-    const labels = endpointStats.map(stat => `${stat.method} ${stat.path}`);
-    const requestCounts = endpointStats.map(stat => stat.count);
-    const avgTimes = endpointStats.map(stat => stat.avg * 1000);
+    const labels = endpointDistribution.map(stat => `${stat.method} ${stat.path}`);
+    const requestCounts = endpointDistribution.map(stat => stat.count);
+    const avgTimes = endpointDistribution.map(stat => stat.avg * 1000);
 
     // Create a fresh chart
     const ctx = document.getElementById('endpoint-distribution-chart').getContext('2d');
@@ -588,15 +536,15 @@ function updateEndpointDistributionChart() {
                     data: requestCounts,
                     backgroundColor: 'rgb(79, 70, 229)',
                     borderColor: 'rgb(79, 70, 229)',
-                    borderWidth: 1,
+                    borderWidth: 1.5,
                     order: 1
                 },
                 {
                     label: 'Avg Time (ms)',
                     data: avgTimes,
-                    backgroundColor: 'rgb(52, 211, 153)',
-                    borderColor: 'rgb(52, 211, 153)',
-                    borderWidth: 1,
+                    backgroundColor: 'rgb(22, 163, 74)',
+                    borderColor: 'rgb(22, 163, 74)',
+                    borderWidth: 1.5,
                     order: 2
                 }
             ]
@@ -744,11 +692,7 @@ function setupRefreshControl() {
 
     // Handle manual refresh
     refreshBtn.addEventListener('click', () => {
-        // Visual feedback for the button
-        refreshBtn.classList.add('refreshing');
-        setTimeout(() => refreshBtn.classList.remove('refreshing'), 500);
-        
-        // Fetch data
+        // Fetch data without spinning animation
         fetchData();
     });
 }
@@ -838,7 +782,7 @@ function configureChartDefaults() {
 // Initialize dashboard
 function initDashboard(dashboardApiPath) {
     // Set API path for data fetching
-    apiPath = dashboardApiPath;
+    apiPath = dashboardApiPath.replace(/\/+$/, '');  // Remove trailing slashes
     
     // Set up UI interactions
     setupTabs();

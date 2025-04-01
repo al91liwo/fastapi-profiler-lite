@@ -12,10 +12,10 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
-        <header class="mb-8">
+        <header class="mb-8 bg-white shadow-sm rounded-md p-4 border border-gray-100">
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-800">FastAPI Profiler</h1>
+                    <h1 class="text-3xl font-bold text-gray-800 tracking-tight">FastAPI Profiler</h1>
                     <p class="text-gray-600">Performance monitoring dashboard</p>
                 </div>
                 <div class="flex gap-4">
@@ -27,7 +27,7 @@
                         <option value="30000">Refresh: 30s</option>
                         <option value="0">Manual refresh</option>
                     </select>
-                    <button id="refresh-btn" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                    <button id="refresh-btn" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200">
                         Refresh
                     </button>
                 </div>
@@ -36,21 +36,21 @@
 
         <!-- Stats Overview -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="stat-card">
-                <div class="text-xs text-gray-500 uppercase mb-1">Total Requests</div>
-                <div id="stat-total-requests" class="text-2xl font-bold text-gray-800">-</div>
+            <div class="stat-card group">
+                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">Total Requests</div>
+                <div id="stat-total-requests" class="metric-value text-2xl font-bold text-gray-800">-</div>
             </div>
-            <div class="stat-card">
-                <div class="text-xs text-gray-500 uppercase mb-1">Avg Response Time</div>
-                <div id="stat-avg-response-time" class="text-2xl font-bold text-indigo-600">-</div>
+            <div class="stat-card group">
+                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">Avg Response Time</div>
+                <div id="stat-avg-response-time" class="metric-value text-2xl font-bold text-indigo-600">-</div>
             </div>
-            <div class="stat-card">
-                <div class="text-xs text-gray-500 uppercase mb-1">Max Response Time</div>
-                <div id="stat-max-response-time" class="text-2xl font-bold text-red-600">-</div>
+            <div class="stat-card group">
+                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">Max Response Time</div>
+                <div id="stat-max-response-time" class="metric-value text-2xl font-bold text-red-600">-</div>
             </div>
-            <div class="stat-card">
-                <div class="text-xs text-gray-500 uppercase mb-1">Unique Endpoints</div>
-                <div id="stat-unique-endpoints" class="text-2xl font-bold text-green-600">-</div>
+            <div class="stat-card group">
+                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">Unique Endpoints</div>
+                <div id="stat-unique-endpoints" class="metric-value text-2xl font-bold text-green-600">-</div>
             </div>
         </div>
 
@@ -199,7 +199,7 @@
         // Initialize the dashboard when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof window.initDashboard === 'function') {
-                window.initDashboard('{{api_path}}');
+                window.initDashboard('{{dashboard_path}}');
             } else {
                 console.error('initDashboard function not found');
             }

@@ -22,12 +22,11 @@ def generate_dashboard_html(dashboard_path: str = "/profiler") -> str:
     """
     css_path = f"{dashboard_path}/static/css/styles.css"
     js_path = f"{dashboard_path}/static/js/dashboard.js"
-    api_path = f"{dashboard_path}/api/profiles"
 
     template = get_template_content("templates/dashboard.html")
 
     template = template.replace("{{css_path}}", css_path)
     template = template.replace("{{js_path}}", js_path)
-    template = template.replace("{{api_path}}", api_path)
+    template = template.replace("{{dashboard_path}}", dashboard_path)
 
     return template

@@ -15,7 +15,7 @@
 A lightweight, zero-configuration performance profiler for FastAPI applications. Monitor your API performance in real-time without external dependencies.
 
 <p align="center">
-  <img src="https://github.com/al91liwo/fastapi-profiler/raw/main/docs/images/dashboard-demo.png" alt="Dashboard Demo" width="800"/>
+  <img src="https://github.com/al91liwo/fastapi-profiler/raw/main/docs/images/dashboard-demo.gif" alt="Dashboard Demo" width="800"/>
 </p>
 
 ## Why FastAPI Profiler?
