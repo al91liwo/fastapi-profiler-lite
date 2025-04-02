@@ -20,11 +20,11 @@
                 </div>
                 <div class="flex gap-4">
                     <select id="refresh-rate" class="form-select rounded border-gray-300 shadow-sm">
+                        <option value="400" selected>Real-time</option>
                         <option value="1000">Refresh: 1s</option>
-                        <option value="2000" selected>Refresh: 2s</option>
+                        <option value="2000">Refresh: 2s</option>
                         <option value="5000">Refresh: 5s</option>
                         <option value="10000">Refresh: 10s</option>
-                        <option value="30000">Refresh: 30s</option>
                         <option value="0">Manual refresh</option>
                     </select>
                     <button id="refresh-btn" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200">
@@ -35,7 +35,7 @@
         </header>
 
         <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
             <div class="stat-card group">
                 <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">Total Requests</div>
                 <div id="stat-total-requests" class="metric-value text-2xl font-bold text-gray-800">-</div>
@@ -43,6 +43,14 @@
             <div class="stat-card group">
                 <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">Avg Response Time</div>
                 <div id="stat-avg-response-time" class="metric-value text-2xl font-bold text-indigo-600">-</div>
+            </div>
+            <div class="stat-card group">
+                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">90th Percentile</div>
+                <div id="stat-p90-response-time" class="metric-value text-2xl font-bold text-yellow-600">-</div>
+            </div>
+            <div class="stat-card group">
+                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">95th Percentile</div>
+                <div id="stat-p95-response-time" class="metric-value text-2xl font-bold text-orange-600">-</div>
             </div>
             <div class="stat-card group">
                 <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">Max Response Time</div>

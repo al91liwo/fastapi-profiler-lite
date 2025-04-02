@@ -69,41 +69,6 @@
     100% { transform: translateX(100%); }
 }
 
-/* Update indicator */
-.update-indicator {
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background-color: rgb(22, 163, 74);
-    animation: pulse 0.5s ease-out;
-    z-index: 9999;
-}
-
-/* Chart update effect */
-.chart-update-pulse {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(22, 163, 74, 0.05);
-    border-radius: 8px;
-    animation: chart-pulse 1s ease-out;
-    pointer-events: none;
-}
-
-@keyframes chart-pulse {
-    0% { opacity: 1; }
-    100% { opacity: 0; }
-}
-
-@keyframes pulse {
-    0% { transform: scale(0); opacity: 1; }
-    100% { transform: scale(20); opacity: 0; }
-}
 
 /* Refresh button styles - no animation */
 .refreshing {

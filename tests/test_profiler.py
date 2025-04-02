@@ -1,4 +1,3 @@
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -76,3 +75,48 @@ def test_disabled_profiler():
 
     # Dashboard should not be available
     assert response.status_code == 404
+
+
+def test_context_isolation():
+    """Test that the context isolation works correctly."""
+    import asyncio
+
+    from fastapi_profiler.utils import (
+        RequestProfiler,
+        current_profiler_ctx,
+        get_current_profiler,
+    )
+
+    async def task1():
+        # Create and set a profiler in this task's context
+        profiler1 = RequestProfiler(request_id="task1", path="/test1", method="GET")
+        token1 = current_profiler_ctx.set(profiler1)
+
+        # Should get the profiler we just set
+        assert get_current_profiler() == profiler1
+
+        # Create a subtask with its own context
+        task2_result = await task2()
+
+        # Our context should still have our profiler
+        assert get_current_profiler() == profiler1
+
+        # Clean up
+        current_profiler_ctx.reset(token1)
+        return task2_result
+
+    async def task2():
+        # This task should have its own isolated context
+        profiler2 = RequestProfiler(request_id="task2", path="/test2", method="GET")
+        token2 = current_profiler_ctx.set(profiler2)
+
+        # Should get the profiler we just set
+        assert get_current_profiler() == profiler2
+
+        # Clean up
+        current_profiler_ctx.reset(token2)
+        return profiler2.request_id
+
+    # Run the test
+    task2_id = asyncio.run(task1())
+    assert task2_id == "task2"

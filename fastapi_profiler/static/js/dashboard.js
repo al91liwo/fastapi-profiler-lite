@@ -83,6 +83,8 @@ function updateStats() {
     const stats = dashboardData.overview;
     document.getElementById('stat-total-requests').textContent = stats.total_requests;
     document.getElementById('stat-avg-response-time').textContent = formatTime(stats.avg_response_time) + ' ms';
+    document.getElementById('stat-p90-response-time').textContent = formatTime(stats.p90_response_time) + ' ms';
+    document.getElementById('stat-p95-response-time').textContent = formatTime(stats.p95_response_time) + ' ms';
     document.getElementById('stat-max-response-time').textContent = formatTime(stats.max_response_time) + ' ms';
     document.getElementById('stat-unique-endpoints').textContent = stats.unique_endpoints;
 }
@@ -257,7 +259,7 @@ let chartState = {
 // Update response time chart
 function updateResponseTimeChart() {
     // Get time series data
-    const responseTimesData = dashboardData.time_series.response_times || [];
+    const responseTimesData = dashboardData.time_series?.response_times || [];
     
     // Check if we have new data
     const hasNewData = responseTimesData.length !== chartState.lastProfileCount;
@@ -301,14 +303,7 @@ function updateResponseTimeChart() {
             }
         });
         
-        // Add visual pulse effect when new data arrives
-        if (hasNewData) {
-            const chartContainer = document.getElementById('response-time-chart').closest('.chart-container');
-            const pulseEffect = document.createElement('div');
-            pulseEffect.className = 'chart-update-pulse';
-            chartContainer.appendChild(pulseEffect);
-            setTimeout(() => pulseEffect.remove(), 1000);
-        }
+        // No visual pulse effect - for smoother updates
     } else {
         // Create a new chart only the first time
         const ctx = document.getElementById('response-time-chart').getContext('2d');
@@ -553,13 +548,13 @@ function updateEndpointDistributionChart() {
             responsive: true,
             maintainAspectRatio: false,
             animation: {
-                duration: 300,
+                duration: 150,
                 easing: 'easeOutQuad'
             },
             transitions: {
                 active: {
                     animation: {
-                        duration: 300
+                        duration: 150
                     }
                 }
             },
@@ -674,13 +669,7 @@ function setupRefreshControl() {
                 if (now - chartState.lastUpdateTime > rate * 0.8) {
                     chartState.lastUpdateTime = now;
                     fetchData().then(hasNewData => {
-                        // Add a visual indicator when new data arrives
-                        if (hasNewData) {
-                            const indicator = document.createElement('div');
-                            indicator.className = 'update-indicator';
-                            document.body.appendChild(indicator);
-                            setTimeout(() => indicator.remove(), 500);
-                        }
+                        // No visual indicator for smoother updates
                     });
                 }
             }, rate);
@@ -796,16 +785,14 @@ function initDashboard(dashboardApiPath) {
     // Initial data fetch
     fetchData();
 
-    // Set default refresh interval (2 seconds for more responsive updates)
+    // Set refresh interval for real-time updates
     refreshInterval = setInterval(() => {
         const now = Date.now();
-        // Only fetch if more than 1.5 seconds have passed since last update
-        // This prevents multiple fetches if updates are triggered by other events
-        if (now - chartState.lastUpdateTime > 1500) {
+        if (now - chartState.lastUpdateTime > 300) {
             chartState.lastUpdateTime = now;
             fetchData();
         }
-    }, 2000);
+    }, 400);
 }
 
 // Export the init function for use in the HTML
