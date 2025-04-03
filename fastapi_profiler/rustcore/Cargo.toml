@@ -4,7 +4,7 @@ version = "0.2.0"
 edition = "2021"
 
 [lib]
-name = "fastapi_profiler_rust"  # Must match Python package name
+name = "rustcore"
 crate-type = ["cdylib"]
 
 [dependencies]
