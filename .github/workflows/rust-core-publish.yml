@@ -1,0 +1,53 @@
+name: Publish Rust Core
+
+on:
+  push:
+    branches: [main, feature/**]
+
+jobs:
+  build-rust:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+
+    - name: Setup Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        target: ${{ matrix.target }}
+        override: true
+
+    - name: Install dependencies
+      run: pip install maturin twine
+
+    - name: Build package
+      run: |
+        cd fastapi_profiler/rustcore
+        maturin build --release --target ${{ matrix.target }}
+
+    - name: Publish to PyPI
+      if: github.event_name == 'push'
+      run: |
+        cd fastapi_profiler/rustcore
+        twine upload \
+          --username __token__ \
+          --password ${{ secrets.PYPI_TOKEN }} \
+          target/wheels/*.whl

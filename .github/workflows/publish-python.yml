@@ -1,8 +1,8 @@
-name: Publish to PyPI
+name: Publish Python Package to PyPi
 
 on:
   release:
-    types: [created, published]
+    types: [published]
 
 jobs:
   deploy:
