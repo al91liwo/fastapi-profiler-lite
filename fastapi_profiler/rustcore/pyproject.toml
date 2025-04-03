@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "fastapi-profiler-rust"
-version = "0.2.0"
+version = "0.2.5"
 description = "Rust-powered statistics aggregator for FastAPI profiling"
 authors = [
     {name = "Alexander Lind", email = "al91liwo@gmail.com"}

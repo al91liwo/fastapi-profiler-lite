@@ -116,6 +116,18 @@ all = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>
 standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "jinja2 (>=3.1.5)", "python-multipart (>=0.0.18)", "uvicorn[standard] (>=0.12.0)"]
 
 [[package]]
+name = "fastapi-profiler-rust"
+version = "0.2.1"
+description = "Rust-powered statistics aggregator for FastAPI profiling"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "fastapi_profiler_rust-0.2.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:a2d086fdfb360bf0706dba72a77e9b2330ff8d48db446a746cd9552483677c16"},
+    {file = "fastapi_profiler_rust-0.2.1-cp312-cp312-manylinux_2_34_x86_64.whl", hash = "sha256:320ebec38a0765941c227e719dbe967f3e8f2ee1aa1dbbc4ec5f8e10070cca9c"},
+]
+
+[[package]]
 name = "h11"
 version = "0.14.0"
 description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
@@ -616,4 +628,4 @@ standard = ["uvicorn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.8,<4.0"
-content-hash = "574d3b5cd113d8f1898bd7e0d2915ae466d4f0fe7c9eb58f51e963cd5b673aef"
+content-hash = "952e7440043a7c11b8b9d7408b3529cf1c3ec828c752c87787f4f6cf79ecc9a6"

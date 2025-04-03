@@ -4,11 +4,17 @@ on:
   push:
     branches:
       - main
+  workflow_run:
+    workflows: ["Publish Rust Core"]
+    types:
+      - completed
+    branches:
+      - main
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, 'chore(release)')"
+    if: "!contains(github.event.head_commit.message, 'chore(release)') && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -39,6 +45,15 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+
+      - name: Prepare environment
+        run: |
+          # Generate lock file
+          poetry lock --no-update
+          
+          # Wait for PyPI to index the latest rust package
+          echo "Waiting for PyPI to index the latest fastapi-profiler-rust package..."
+          sleep 120
 
       - name: Semantic Release
         env:

@@ -5,7 +5,7 @@ mod stats_aggregator;
 use stats_aggregator::PyAggregatedStats;
 
 #[pymodule]
-fn fastapi_profiler_rust(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn rustcore(_py: Python<'_>, m: &PyModule) -> PyResult<()> {  // Changed name to match Cargo.toml
     m.add_class::<PyAggregatedStats>()?;
     Ok(())
 }

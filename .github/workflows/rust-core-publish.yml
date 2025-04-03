@@ -3,9 +3,81 @@ name: Publish Rust Core
 on:
   push:
     branches: [main, feature/**]
+  workflow_dispatch:
 
 jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump-version.outputs.new_version }}
+      should_publish: ${{ steps.check-changes.outputs.should_publish }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Check for Rust code changes
+        id: check-changes
+        run: |
+          # Always publish on workflow_dispatch or when running manually
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          # Always publish on main branch
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          # Check for changes in rustcore directory
+          elif [[ -n "${{ github.event.before }}" && -n "${{ github.event.after }}" ]] && git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep -q "fastapi_profiler/rustcore/"; then
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Get current version
+        id: current-version
+        if: steps.check-changes.outputs.should_publish == 'true'
+        run: |
+          CURRENT_VERSION=$(grep 'version = ' fastapi_profiler/rustcore/Cargo.toml | head -1 | cut -d '"' -f2)
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Bump patch version
+        id: bump-version
+        if: steps.check-changes.outputs.should_publish == 'true'
+        run: |
+          CURRENT_VERSION=${{ steps.current-version.outputs.current_version }}
+          MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
+          MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
+          PATCH=$(echo $CURRENT_VERSION | cut -d. -f3)
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          
+          # Update version in Cargo.toml
+          sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" fastapi_profiler/rustcore/Cargo.toml
+          
+          # Update version in pyproject.toml
+          sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" fastapi_profiler/rustcore/pyproject.toml
+          
+          # Update version in setup.py
+          sed -i "s/version=\"$CURRENT_VERSION\"/version=\"$NEW_VERSION\"/" fastapi_profiler/rustcore/setup.py
+          
+          # Update version in __init__.py
+          sed -i "s/__version__ = \"$CURRENT_VERSION\"/__version__ = \"$NEW_VERSION\"/" fastapi_profiler/rustcore/__init__.py
+      
+      - name: Commit version changes
+        if: steps.check-changes.outputs.should_publish == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add fastapi_profiler/rustcore/Cargo.toml
+          git add fastapi_profiler/rustcore/pyproject.toml
+          git add fastapi_profiler/rustcore/setup.py
+          git add fastapi_profiler/rustcore/__init__.py
+          git commit -m "chore: bump rustcore version to ${{ steps.bump-version.outputs.new_version }} [skip ci]"
+          git push
+
   build-rust:
+    needs: update-version
+    if: needs.update-version.outputs.should_publish == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -21,6 +93,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        ref: ${{ github.ref }}
 
     - name: Setup Python 3.12
       uses: actions/setup-python@v4
@@ -44,10 +118,85 @@ jobs:
         maturin build --release --target ${{ matrix.target }}
 
     - name: Publish to PyPI
-      if: github.event_name == 'push'
+      shell: bash
       run: |
         cd fastapi_profiler/rustcore
         twine upload \
           --username __token__ \
           --password ${{ secrets.PYPI_TOKEN }} \
           target/wheels/*.whl
+          
+    - name: Upload wheel as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: rust-wheel-${{ matrix.os }}
+        path: fastapi_profiler/rustcore/target/wheels/*.whl
+        retention-days: 7
+
+  update-lock-file:
+    needs: [update-version, build-rust]
+    if: needs.update-version.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 1.5.1
+      
+      - name: Wait for PyPI to index the package
+        run: |
+          echo "Waiting for PyPI to index the new package version..."
+          sleep 60
+      
+      - name: Update lock file
+        run: |
+          # Force poetry to use the latest version by updating the constraint
+          sed -i 's/fastapi-profiler-rust = ">=.*"/fastapi-profiler-rust = ">=${{ needs.update-version.outputs.version }}"/' pyproject.toml
+          
+          # Update Cargo.lock to match the new version
+          cd fastapi_profiler/rustcore
+          cargo update -p fastapi-profiler-rust
+          cd ../..
+          
+          # Generate a new lock file and wait for PyPI to index the package
+          echo "Waiting for PyPI to index the new package version..."
+          sleep 120
+          poetry lock --no-update
+      
+      - name: Commit and push updated lock file
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add poetry.lock pyproject.toml
+          git commit -m "chore: update poetry.lock with rustcore v${{ needs.update-version.outputs.version }} [skip ci]"
+          git push
+      
+      - name: Create success output
+        run: |
+          echo "Rust core version ${{ needs.update-version.outputs.version }} successfully published to PyPI and lock file updated"
+          
+  trigger-python-tests:
+    needs: [update-lock-file]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Python Package workflow
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: rust-package-published
+          client-payload: '{"version": "${{ needs.update-version.outputs.version }}"}'
+      
+      - name: Wait for PyPI propagation
+        run: |
+          echo "Waiting for PyPI to fully propagate the package..."
+          sleep 180
+          echo "Python tests should now be triggered via workflow_run event"
