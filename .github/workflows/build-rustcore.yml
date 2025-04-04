@@ -103,12 +103,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Download wheels
-        uses: actions/download-artifact@v4
-        with:
-          path: ./wheels
-          merge-multiple: true
-
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -116,6 +110,17 @@ jobs:
 
       - name: Install tools
         run: pip install twine toml
+
+      - name: Download all wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: ./wheels
+          merge-multiple: true
+
+      - name: List downloaded wheel files
+        run: |
+          echo "✅ Downloaded wheel files:"
+          find ./wheels -name "*.whl"
 
       - name: Bump version
         id: bump-version
@@ -158,4 +163,4 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          python -m twine upload --non-interactive --skip-existing wheels/**/*.whl
+          python -m twine upload --non-interactive --skip-existing wheels/*.whl
