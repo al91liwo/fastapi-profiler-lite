@@ -163,4 +163,13 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          python -m twine upload --non-interactive --skip-existing wheels/*.whl
+          echo "Attempting to upload wheels with explicit token handling"
+
+          for wheel in ./wheels/*.whl; do
+            echo "Uploading $wheel"
+            TWINE_USERNAME=__token__ TWINE_PASSWORD="${{ secrets.PYPI_TOKEN }}" \
+              python -m twine upload \
+              --verbose \
+              --non-interactive \
+              "$wheel"
+          done
