@@ -159,17 +159,17 @@ jobs:
           git push
 
       - name: Publish to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          echo "Attempting to upload wheels to PyPI"
+          echo "[pypi]" > ~/.pypirc
+          echo "username = __token__" >> ~/.pypirc
+          echo "password = ${{ secrets.PYPI_TOKEN }}" >> ~/.pypirc
+
+          chmod 600 ~/.pypirc  # Restrict file permissions
 
           for wheel in ./wheels/*.whl; do
             echo "Uploading $wheel"
-            python -m twine upload \
-              --verbose \
-              --repository-url https://upload.pypi.org/legacy/ \
-              --non-interactive \
-              "$wheel"
+            twine upload "$wheel"
           done
+
+          # Securely remove the .pypirc file
+          shred -u ~/.pypirc
