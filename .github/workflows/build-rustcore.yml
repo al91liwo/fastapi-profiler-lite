@@ -96,29 +96,80 @@ jobs:
           poetry install --with dev --extras standard
           poetry run pytest
 
+  publish-to-pypi:
+    needs: [build-rust, test]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install tools
+        run: |
+          pip install twine toml
+          pip install --upgrade pip setuptools wheel
+
+      - name: Download all wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: ./wheels
+          merge-multiple: true
+
+      - name: List downloaded wheel files
+        run: |
+          echo "✅ Downloaded wheel files:"
+          find ./wheels -name "*.whl"
+
+      - name: Bump version
+        id: bump-version
+        run: |
+          CURRENT_VERSION=$(grep '^version = "' fastapi_profiler/rustcore/Cargo.toml | cut -d '"' -f2)
+          MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
+          MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
+          PATCH=$(echo $CURRENT_VERSION | cut -d. -f3)
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          echo "🔁 Bumping version to $NEW_VERSION"
+
+          sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" fastapi_profiler/rustcore/Cargo.toml
+          sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" fastapi_profiler/rustcore/pyproject.toml
+          sed -i "s/version=\"$CURRENT_VERSION\"/version=\"$NEW_VERSION\"/" fastapi_profiler/rustcore/setup.py
+
+          INIT_FILE=fastapi_profiler/rustcore/__init__.py
+          if [ -f "$INIT_FILE" ]; then
+            sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" $INIT_FILE
+          else
+            echo "__version__ = \"$NEW_VERSION\"" > $INIT_FILE
+          fi
+
+          sed -i "s/fastapi-profiler-rust = \">=.*\"/fastapi-profiler-rust = \">=$NEW_VERSION\"/" pyproject.toml
+
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add fastapi_profiler/rustcore/Cargo.toml \
+                  fastapi_profiler/rustcore/pyproject.toml \
+                  fastapi_profiler/rustcore/setup.py \
+                  fastapi_profiler/rustcore/__init__.py \
+                  pyproject.toml
+          git commit -m "chore(rustcore): bump rustcore version to $NEW_VERSION [skip ci]"
+          git push
+
       - name: Publish to PyPI
         env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
-          echo "Debug: Token length is ${#TWINE_PASSWORD}"
-          
-          # Create .pypirc with more explicit configuration
-          mkdir -p ~/.config/pypi
-          echo "[pypi]" > ~/.pypirc
-          echo "repository = https://upload.pypi.org/legacy/" >> ~/.pypirc
-          echo "username = __token__" >> ~/.pypirc
-          echo "password = $TWINE_PASSWORD" >> ~/.pypirc
-          
-          chmod 600 ~/.pypirc
-          
-          # Verbose upload with explicit parameters
-          python -m twine upload \
-            --verbose \
-            --repository-url https://upload.pypi.org/legacy/ \
-            --username __token__ \
-            --password "$TWINE_PASSWORD" \
-            ./wheels/*.whl
-          
-          # Securely remove credentials
-          shred -u ~/.pypirc
+          for wheel in ./wheels/*.whl; do
+            echo "Uploading $wheel"
+            python -m twine upload \
+              --verbose \
+              --repository-url https://upload.pypi.org/legacy/ \
+              --username __token__ \
+              --password "$PYPI_TOKEN" \
+              "$wheel"
+          done
