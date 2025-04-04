@@ -4,7 +4,7 @@ from setuptools import setup
 # The actual build configuration is in pyproject.toml
 setup(
     name="fastapi-profiler-rust",
-    version="0.2.10",
+    version="0.2.11",
     description="Rust-powered statistics aggregator for FastAPI profiling",
     author="Alexander Lind",
     author_email="al91liwo@gmail.com",
