@@ -160,6 +160,12 @@ jobs:
           git commit -m "chore(rustcore): bump rustcore version to $NEW_VERSION [skip ci]"
           git push
 
+      - name: Debug token presence
+        run: |
+          echo "PYPI_TOKEN is ${PYPI_TOKEN:+set}"
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+
       - name: Publish to PyPI
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
@@ -170,6 +176,6 @@ jobs:
               --verbose \
               --repository-url https://upload.pypi.org/legacy/ \
               --username __token__ \
-              --password "$PYPI_TOKEN" \
+              --password "${{ secrets.PYPI_TOKEN }}" \
               "$wheel"
           done
