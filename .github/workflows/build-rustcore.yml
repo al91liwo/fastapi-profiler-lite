@@ -1,0 +1,166 @@
+name: Build, Test and Publish Rust Core
+
+on:
+  push:
+    branches: [main, feature/**]
+    paths:
+      - 'fastapi_profiler/rustcore/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  build-rust:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+
+      - name: Install maturin
+        run: pip install maturin
+
+      - name: Build wheel (manylinux for Linux)
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --target ${{ matrix.target }} --out dist --interpreter python${{ matrix.python-version }}
+          manylinux: manylinux2014
+          working-directory: fastapi_profiler/rustcore
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-wheel-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: fastapi_profiler/rustcore/dist/*.whl
+          retention-days: 7
+
+  test:
+    needs: build-rust
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
+        run: pip install poetry==1.5.1
+
+      - name: Download wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: ./wheels
+          merge-multiple: true
+
+      - name: Install built wheel
+        run: |
+          pip install --find-links=./wheels fastapi-profiler-rust
+
+      - name: Run tests
+        run: |
+          poetry config virtualenvs.create false
+          poetry install --with dev --extras standard
+          poetry run pytest
+
+  publish-to-pypi:
+    needs: [build-rust, test]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: ./wheels
+          merge-multiple: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install tools
+        run: pip install twine toml
+
+      - name: Bump version
+        id: bump-version
+        run: |
+          CURRENT_VERSION=$(grep '^version = "' fastapi_profiler/rustcore/Cargo.toml | cut -d '"' -f2)
+          MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
+          MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
+          PATCH=$(echo $CURRENT_VERSION | cut -d. -f3)
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$NEW_PATCH"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          echo "🔁 Bumping version to $NEW_VERSION"
+
+          sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" fastapi_profiler/rustcore/Cargo.toml
+          sed -i "s/version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" fastapi_profiler/rustcore/pyproject.toml
+          sed -i "s/version=\"$CURRENT_VERSION\"/version=\"$NEW_VERSION\"/" fastapi_profiler/rustcore/setup.py
+
+          INIT_FILE=fastapi_profiler/rustcore/__init__.py
+          if [ -f "$INIT_FILE" ]; then
+            sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" $INIT_FILE
+          else
+            echo "__version__ = \"$NEW_VERSION\"" > $INIT_FILE
+          fi
+
+          sed -i "s/fastapi-profiler-rust = \">=.*\"/fastapi-profiler-rust = \">=$NEW_VERSION\"/" pyproject.toml
+
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add fastapi_profiler/rustcore/Cargo.toml \
+                  fastapi_profiler/rustcore/pyproject.toml \
+                  fastapi_profiler/rustcore/setup.py \
+                  fastapi_profiler/rustcore/__init__.py \
+                  pyproject.toml
+          git commit -m "chore: bump rustcore version to $NEW_VERSION [skip ci]"
+          git push
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          python -m twine upload --non-interactive --skip-existing wheels/**/*.whl
+
+      - name: Trigger downstream test workflow
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: rust-package-published

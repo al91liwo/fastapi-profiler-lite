@@ -1,7 +1,7 @@
 import json
 from typing import Dict, List
 
-from rustcore.fastapi_profiler_rust import PyAggregatedStats
+from rustcore import PyAggregatedStats
 
 
 class AggregatedStats:

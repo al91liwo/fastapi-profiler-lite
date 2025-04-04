@@ -1,11 +1,14 @@
-name: Semantic Release
+name: Release Python Package
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'fastapi_profiler/**'
+      - '!fastapi_profiler/rustcore/**'
   workflow_run:
-    workflows: ["Publish Rust Core"]
+    workflows: ["Build Rust Core"]
     types:
       - completed
     branches:
@@ -46,18 +49,17 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-      - name: Prepare environment
-        run: |
-          # Generate lock file
-          poetry lock --no-update
-          
-          # Wait for PyPI to index the latest rust package
-          echo "Waiting for PyPI to index the latest fastapi-profiler-rust package..."
-          sleep 120
-
-      - name: Semantic Release
+      - name: Generate release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
           semantic-release
+
+      - name: Build and publish package
+        if: ${{ success() }}
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          poetry config pypi-token.pypi $PYPI_TOKEN
+          poetry build
+          poetry publish
