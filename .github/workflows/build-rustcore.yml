@@ -163,13 +163,13 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          echo "Attempting to upload wheels with explicit token handling"
+          echo "Attempting to upload wheels to PyPI"
 
           for wheel in ./wheels/*.whl; do
             echo "Uploading $wheel"
-            TWINE_USERNAME=__token__ TWINE_PASSWORD="${{ secrets.PYPI_TOKEN }}" \
-              python -m twine upload \
+            python -m twine upload \
               --verbose \
+              --repository-url https://upload.pypi.org/legacy/ \
               --non-interactive \
               "$wheel"
           done
