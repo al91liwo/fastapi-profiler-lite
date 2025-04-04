@@ -23,7 +23,7 @@ python = ">=3.8,<4.0"
 fastapi = ">=0.68.0"
 starlette = ">=0.14.2"
 jinja2 = ">=3.1.2"
-fastapi-profiler-rust = ">=0.2.13"
+fastapi-profiler-rust = ">=0.2.14"
 
 [tool.poetry.extras]
 standard = ["uvicorn"]
