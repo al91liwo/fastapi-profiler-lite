@@ -2,22 +2,17 @@ name: Release Python Package
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'fastapi_profiler/**'
-      - '!fastapi_profiler/rustcore/**'
-  workflow_run:
-    workflows: ["Build Rust Core"]
-    types:
-      - completed
-    branches:
-      - main
+    branches: [main]
 
 jobs:
+  call-rustcore:
+    uses: ./.github/workflows/build-rustcore.yml
+
   release:
+    needs: call-rustcore
+    if: "!contains(github.event.head_commit.message, 'chore(release)')"
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, 'chore(release)') && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3

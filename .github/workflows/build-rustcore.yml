@@ -2,10 +2,11 @@ name: Build, Test and Publish Rust Core
 
 on:
   push:
-    branches: [main, feature/**]
+    branches: [main]
     paths:
       - 'fastapi_profiler/rustcore/**'
   workflow_dispatch:
+  workflow_call: {}
 
 permissions:
   contents: write
@@ -46,7 +47,7 @@ jobs:
       - name: Install maturin
         run: pip install maturin
 
-      - name: Build wheel (manylinux for Linux)
+      - name: Build wheel
         uses: PyO3/maturin-action@v1
         with:
           command: build
@@ -149,7 +150,7 @@ jobs:
                   fastapi_profiler/rustcore/setup.py \
                   fastapi_profiler/rustcore/__init__.py \
                   pyproject.toml
-          git commit -m "chore: bump rustcore version to $NEW_VERSION [skip ci]"
+          git commit -m "chore(rustcore): bump rustcore version to $NEW_VERSION [skip ci]"
           git push
 
       - name: Publish to PyPI
@@ -158,9 +159,3 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
           python -m twine upload --non-interactive --skip-existing wheels/**/*.whl
-
-      - name: Trigger downstream test workflow
-        uses: peter-evans/repository-dispatch@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: rust-package-published
