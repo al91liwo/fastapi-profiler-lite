@@ -64,3 +64,14 @@ venv.bak/
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Rust build artifacts
+**/*.rlib
+**/*.rmeta
+**/*.d
+**/*.so
+**/*.dylib
+**/*.json
+**/*.timestamp
+**/*.fingerprint/
+*/target/*

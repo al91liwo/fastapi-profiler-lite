@@ -1,0 +1,15 @@
+[package]
+name = "fastapi-profiler-rust"
+version = "0.2.6"
+edition = "2021"
+
+[lib]
+name = "rustcore"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.20", features = ["extension-module"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dashmap = "5.5"
+parking_lot = "0.12"
