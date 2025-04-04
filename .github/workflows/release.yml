@@ -1,23 +1,14 @@
-name: Release Python Package
+name: Semantic Release
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'fastapi_profiler/**'
-      - '!fastapi_profiler/rustcore/**'
-  workflow_run:
-    workflows: ["Build Rust Core"]
-    types:
-      - completed
     branches:
       - main
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, 'chore(release)') && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')"
+    if: "!contains(github.event.head_commit.message, 'chore(release)')"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -49,17 +40,9 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
-      - name: Generate release
+      - name: Semantic Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          semantic-release
-
-      - name: Build and publish package
-        if: ${{ success() }}
-        env:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
-          poetry config pypi-token.pypi $PYPI_TOKEN
-          poetry build
-          poetry publish
+          semantic-release
