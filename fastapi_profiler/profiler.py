@@ -60,13 +60,9 @@ class Profiler:
             template = f.read()
 
         # Pre-render the template
-        return (
-            template.replace(
-                "{{css_path}}", f"{self.dashboard_path}/static/css/styles.css"
-            )
-            .replace("{{js_path}}", f"{self.dashboard_path}/static/js/dashboard.js")
-            .replace("{{dashboard_path}}", self.dashboard_path)
-        )
+        return template.replace(
+            "{{js_path}}", f"{self.dashboard_path}/static/js/dashboard.js"
+        ).replace("{{dashboard_path}}", self.dashboard_path)
 
     def _render_dashboard(self):
         """Return the pre-rendered dashboard HTML."""
@@ -152,7 +148,7 @@ class Profiler:
                         * 1000,  # 90th percentile
                         "p95_response_time": stats.get_percentile(95)
                         * 1000,  # 95th percentile
-                        "unique_endpoints": len(stats.endpoints),
+                        "unique_endpoints": stats._impl.get_unique_endpoints(),
                     },
                     "time_series": {"response_times": response_times},
                     "endpoints": {
@@ -161,7 +157,10 @@ class Profiler:
                         "distribution": stats.get_endpoint_distribution(10),
                         "by_method": stats.get_method_distribution(),
                     },
-                    "requests": {"recent": recent_requests},
+                    "requests": {
+                        "recent": recent_requests,
+                        "status_codes": stats.get_status_code_distribution(),
+                    },
                 }
             except Exception as e:
                 print(f"Error generating dashboard data: {str(e)}")
@@ -183,7 +182,7 @@ class Profiler:
                         "slowest": [],
                         "by_method": [],
                     },
-                    "requests": {"recent": []},
+                    "requests": {"recent": [], "status_codes": []},
                 }
 
         @router.get("/api/profile/{profile_id}")

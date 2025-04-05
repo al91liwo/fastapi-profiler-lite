@@ -4,204 +4,381 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FastAPI Profiler</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/luxon@3.0.1/build/global/luxon.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.2.0/dist/chartjs-adapter-luxon.min.js"></script>
-    <link rel="stylesheet" href="{{css_path}}">
+    
+    <!-- Tabler Core -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+    <!-- Tabler Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    
+    <!-- ApexCharts for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.40.0/dist/apexcharts.min.js"></script>
+    
+    <!-- Custom styles -->
+    <style>
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+        }
+        .cursor-pointer {
+            cursor: pointer;
+        }
+        .pagination {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .page-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            color: var(--tblr-primary);
+            background-color: transparent;
+            border: 1px solid var(--tblr-border-color);
+            text-decoration: none;
+        }
+        .page-link:hover {
+            background-color: var(--tblr-primary-lt);
+        }
+        .page-link.disabled {
+            color: var(--tblr-secondary);
+            pointer-events: none;
+            opacity: 0.65;
+        }
+        /* Styles for grouped endpoints */
+        .group-row {
+            background-color: rgba(var(--tblr-primary-rgb), 0.05);
+            font-weight: 500;
+        }
+        .group-row:hover {
+            background-color: rgba(var(--tblr-primary-rgb), 0.1);
+        }
+        .endpoint-details {
+            background-color: rgba(var(--tblr-primary-rgb), 0.02);
+        }
+        .endpoint-details table {
+            margin-bottom: 0;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <header class="mb-8 bg-white shadow-sm rounded-md p-4 border border-gray-100">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-800 tracking-tight">FastAPI Profiler</h1>
-                    <p class="text-gray-600">Performance monitoring dashboard</p>
-                </div>
-                <div class="flex gap-4">
-                    <select id="refresh-rate" class="form-select rounded border-gray-300 shadow-sm">
-                        <option value="400" selected>Real-time</option>
-                        <option value="1000">Refresh: 1s</option>
-                        <option value="2000">Refresh: 2s</option>
-                        <option value="5000">Refresh: 5s</option>
-                        <option value="10000">Refresh: 10s</option>
-                        <option value="0">Manual refresh</option>
-                    </select>
-                    <button id="refresh-btn" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors duration-200">
-                        Refresh
-                    </button>
+<body>
+    <div class="page">
+        <!-- Navbar -->
+        <header class="navbar navbar-expand-md navbar-light d-print-none">
+            <div class="container-xl">
+                <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+                    <span class="fs-1">FastAPI Profiler</span>
+                </h1>
+                <div class="navbar-nav flex-row order-md-last">
+                    <div class="nav-item d-flex me-3">
+                        <select id="refresh-rate" class="form-select">
+                            <option value="400" selected>Real-time</option>
+                            <option value="1000">Refresh: 1s</option>
+                            <option value="2000">Refresh: 2s</option>
+                            <option value="5000">Refresh: 5s</option>
+                            <option value="10000">Refresh: 10s</option>
+                            <option value="0">Manual refresh</option>
+                        </select>
+                    </div>
+                    <div class="nav-item">
+                        <button id="refresh-btn" class="btn btn-primary">
+                            <i class="ti ti-refresh"></i>
+                            Refresh
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
-
-        <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
-            <div class="stat-card group">
-                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">Total Requests</div>
-                <div id="stat-total-requests" class="metric-value text-2xl font-bold text-gray-800">-</div>
+        
+        <div class="page-wrapper">
+            <!-- Page header -->
+            <div class="page-header d-print-none">
+                <div class="container-xl">
+                    <div class="row g-2 align-items-center">
+                        <div class="col">
+                            <div class="page-pretitle">
+                                Performance Monitoring
+                            </div>
+                            <h2 class="page-title">
+                                Dashboard
+                            </h2>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="stat-card group">
-                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">Avg Response Time</div>
-                <div id="stat-avg-response-time" class="metric-value text-2xl font-bold text-indigo-600">-</div>
-            </div>
-            <div class="stat-card group">
-                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">90th Percentile</div>
-                <div id="stat-p90-response-time" class="metric-value text-2xl font-bold text-yellow-600">-</div>
-            </div>
-            <div class="stat-card group">
-                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">95th Percentile</div>
-                <div id="stat-p95-response-time" class="metric-value text-2xl font-bold text-orange-600">-</div>
-            </div>
-            <div class="stat-card group">
-                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">Max Response Time</div>
-                <div id="stat-max-response-time" class="metric-value text-2xl font-bold text-red-600">-</div>
-            </div>
-            <div class="stat-card group">
-                <div class="text-xs text-gray-500 uppercase mb-1 group-hover:text-gray-700">Unique Endpoints</div>
-                <div id="stat-unique-endpoints" class="metric-value text-2xl font-bold text-green-600">-</div>
-            </div>
-        </div>
-
-        <!-- Tabs -->
-        <div class="mb-8">
-            <div class="border-b border-gray-200">
-                <nav class="flex -mb-px">
-                    <a id="tab-overview" class="tab active">Overview</a>
-                    <a id="tab-endpoints" class="tab">Endpoints</a>
-                    <a id="tab-requests" class="tab">Recent Requests</a>
-                </nav>
-            </div>
-        </div>
-
-        <!-- Tab Content -->
-        <div id="tab-content" class="mb-8">
-            <!-- Overview Tab (default) -->
-            <div id="content-overview" class="tab-content">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            
+            <!-- Page body -->
+            <div class="page-body">
+                <div class="container-xl">
+                    <!-- Stats Overview -->
+                    <div class="row row-deck row-cards mb-4">
+                        <div class="col-sm-6 col-lg-2">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="subheader">Total Requests</div>
+                                    </div>
+                                    <div id="stat-total-requests" class="h1 mb-0">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-2">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="subheader">Avg Response Time</div>
+                                    </div>
+                                    <div id="stat-avg-response-time" class="h1 mb-0 text-indigo">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-2">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="subheader">90th Percentile</div>
+                                    </div>
+                                    <div id="stat-p90-response-time" class="h1 mb-0 text-yellow">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-2">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="subheader">95th Percentile</div>
+                                    </div>
+                                    <div id="stat-p95-response-time" class="h1 mb-0 text-orange">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-2">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="subheader">Max Response Time</div>
+                                    </div>
+                                    <div id="stat-max-response-time" class="h1 mb-0 text-red">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-2">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center">
+                                        <div class="subheader">Unique Endpoints</div>
+                                    </div>
+                                    <div id="stat-unique-endpoints" class="h1 mb-0 text-green">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tabs -->
                     <div class="card">
                         <div class="card-header">
-                            <h2 class="text-lg font-semibold text-gray-700">Response Time Trend</h2>
+                            <ul class="nav nav-tabs card-header-tabs" data-bs-toggle="tabs">
+                                <li class="nav-item">
+                                    <a href="#tab-overview" class="nav-link active" data-bs-toggle="tab">Overview</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="#tab-endpoints" class="nav-link" data-bs-toggle="tab">Endpoints</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="#tab-requests" class="nav-link" data-bs-toggle="tab">Recent Requests</a>
+                                </li>
+                            </ul>
                         </div>
+                        
                         <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="response-time-chart"></canvas>
+                            <div class="tab-content">
+                                <!-- Overview Tab -->
+                                <div id="tab-overview" class="tab-pane active show">
+                                    <div class="row">
+                                        <div class="col-lg-6">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <h3 class="card-title">Response Time Trend</h3>
+                                                        <select id="time-range" class="form-select form-select-sm w-auto">
+                                                            <option value="5">Last 5 minutes</option>
+                                                            <option value="15">Last 15 minutes</option>
+                                                            <option value="60">Last hour</option>
+                                                            <option value="0">All data</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="chart-container">
+                                                        <div id="response-time-chart"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-lg-6">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h3 class="card-title">Requests by Method</h3>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="chart-container">
+                                                        <div id="requests-by-method-chart"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row mt-3">
+                                        <div class="col-lg-6">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h3 class="card-title">Status Code Distribution</h3>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="chart-container">
+                                                        <div id="status-code-chart"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card mt-3">
+                                        <div class="card-header">
+                                            <h3 class="card-title">Slowest Endpoints</h3>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="table-responsive">
+                                                <table id="slowest-endpoints-table" class="table table-vcenter card-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Method</th>
+                                                            <th>Path</th>
+                                                            <th>Avg Time (ms)</th>
+                                                            <th>Max Time (ms)</th>
+                                                            <th>Count</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Endpoints Tab -->
+                                <div id="tab-endpoints" class="tab-pane">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h3 class="card-title">Endpoint Performance</h3>
+                                                <div>
+                                                    <input type="text" id="endpoint-search" class="form-control" placeholder="Search endpoints...">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="table-responsive">
+                                                <table id="endpoints-table" class="table table-vcenter card-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th class="cursor-pointer" data-sort="method">Method</th>
+                                                            <th class="cursor-pointer" data-sort="path">Path</th>
+                                                            <th class="cursor-pointer" data-sort="avg">Avg Time (ms)</th>
+                                                            <th class="cursor-pointer" data-sort="max">Max Time (ms)</th>
+                                                            <th class="cursor-pointer" data-sort="min">Min Time (ms)</th>
+                                                            <th class="cursor-pointer" data-sort="count">Count</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr><td colspan="6" class="text-center">Loading...</td></tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div class="d-flex justify-content-center mt-3">
+                                                <div id="endpoints-pagination" class="pagination"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card mt-3">
+                                        <div class="card-header">
+                                            <h3 class="card-title">Endpoint Distribution</h3>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="chart-container">
+                                                <div id="endpoint-distribution-chart"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Requests Tab -->
+                                <div id="tab-requests" class="tab-pane">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h3 class="card-title">Recent Requests</h3>
+                                                <div>
+                                                    <input type="text" id="request-search" class="form-control" placeholder="Search requests...">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="table-responsive">
+                                                <table id="requests-table" class="table table-vcenter card-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th class="cursor-pointer" data-sort="timestamp">Timestamp</th>
+                                                            <th class="cursor-pointer" data-sort="method">Method</th>
+                                                            <th class="cursor-pointer" data-sort="path">Path</th>
+                                                            <th class="cursor-pointer" data-sort="status">Status</th>
+                                                            <th class="cursor-pointer" data-sort="time">Time (ms)</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div class="d-flex justify-content-center mt-3">
+                                                <div id="requests-pagination" class="pagination"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h2 class="text-lg font-semibold text-gray-700">Requests by Method</h2>
-                        </div>
-                        <div class="card-body">
-                            <div class="chart-container">
-                                <canvas id="requests-by-method-chart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="text-lg font-semibold text-gray-700">Slowest Endpoints</h2>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-container">
-                            <table id="slowest-endpoints-table" class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Method</th>
-                                        <th>Path</th>
-                                        <th>Avg Time (ms)</th>
-                                        <th>Max Time (ms)</th>
-                                        <th>Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr><td colspan="5" class="text-center py-4 text-gray-500">Loading...</td></tr>
-                                </tbody>
-                            </table>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Endpoints Tab -->
-            <div id="content-endpoints" class="tab-content hidden">
-                <div class="card mb-6">
-                    <div class="card-header">
-                        <div class="flex justify-between items-center">
-                            <h2 class="text-lg font-semibold text-gray-700">Endpoint Performance</h2>
-                            <div class="flex items-center">
-                                <input type="text" id="endpoint-search" placeholder="Search endpoints..." 
-                                       class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-container">
-                            <table id="endpoints-table" class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th class="cursor-pointer" data-sort="method">Method</th>
-                                        <th class="cursor-pointer" data-sort="path">Path</th>
-                                        <th class="cursor-pointer" data-sort="avg">Avg Time (ms)</th>
-                                        <th class="cursor-pointer" data-sort="max">Max Time (ms)</th>
-                                        <th class="cursor-pointer" data-sort="min">Min Time (ms)</th>
-                                        <th class="cursor-pointer" data-sort="count">Count</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr><td colspan="6" class="text-center py-4 text-gray-500">Loading...</td></tr>
-                                </tbody>
-                            </table>
+            
+            <!-- Footer -->
+            <footer class="footer footer-transparent d-print-none">
+                <div class="container-xl">
+                    <div class="row text-center align-items-center flex-row-reverse">
+                        <div class="col-12 col-lg-auto mt-3 mt-lg-0">
+                            <ul class="list-inline list-inline-dots mb-0">
+                                <li class="list-inline-item">
+                                    FastAPI Profiler
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </div>
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="text-lg font-semibold text-gray-700">Endpoint Distribution</h2>
-                    </div>
-                    <div class="card-body">
-                        <div class="chart-container">
-                            <canvas id="endpoint-distribution-chart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Requests Tab -->
-            <div id="content-requests" class="tab-content hidden">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="flex justify-between items-center">
-                            <h2 class="text-lg font-semibold text-gray-700">Recent Requests</h2>
-                            <div class="flex items-center">
-                                <input type="text" id="request-search" placeholder="Search requests..." 
-                                       class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-container">
-                            <table id="requests-table" class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th class="cursor-pointer" data-sort="timestamp">Timestamp</th>
-                                        <th class="cursor-pointer" data-sort="method">Method</th>
-                                        <th class="cursor-pointer" data-sort="path">Path</th>
-                                        <th class="cursor-pointer" data-sort="time">Time (ms)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr><td colspan="4" class="text-center py-4 text-gray-500">Loading...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            </footer>
         </div>
     </div>
-
+    
+    <!-- Tabler Core JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+    
+    <!-- Your dashboard JS -->
     <script src="{{js_path}}"></script>
     <script>
         // Initialize the dashboard when DOM is loaded

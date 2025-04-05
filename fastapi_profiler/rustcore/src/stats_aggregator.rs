@@ -30,10 +30,17 @@ pub struct MethodDistribution {
     pub count: usize,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatusCodeDistribution {
+    pub status: u16,
+    pub count: usize,
+}
+
 #[pyclass]
 pub struct PyAggregatedStats {
     endpoints: HashMap<String, EndpointStats>,
     methods: HashMap<String, usize>,
+    status_codes: HashMap<u16, usize>,
     total_requests: usize,
     total_time: f64,
     max_time: f64,
@@ -52,6 +59,7 @@ impl PyAggregatedStats {
         PyAggregatedStats {
             endpoints: HashMap::new(),
             methods: HashMap::new(),
+            status_codes: HashMap::new(),
             total_requests: 0,
             total_time: 0.0,
             max_time: 0.0,
@@ -162,6 +170,21 @@ impl PyAggregatedStats {
             Err(e) => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e)))
         }
     }
+    
+    pub fn get_status_code_distribution(&self) -> PyResult<String> {
+        let distribution: Vec<StatusCodeDistribution> = self.status_codes
+            .iter()
+            .map(|(status, count)| StatusCodeDistribution {
+                status: *status,
+                count: *count,
+            })
+            .collect();
+            
+        match serde_json::to_string(&distribution) {
+            Ok(json) => Ok(json),
+            Err(e) => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("Serialization error: {}", e)))
+        }
+    }
 
     pub fn get_endpoint_distribution(&self, limit: Option<usize>) -> PyResult<String> {
         let mut summaries: Vec<EndpointSummary> = self.endpoints
@@ -210,8 +233,14 @@ impl PyAggregatedStats {
         let method = profile["method"].as_str().unwrap_or("UNKNOWN").to_string();
         let path = profile["path"].as_str().unwrap_or("/").to_string();
         let time_value = profile["total_time"].as_f64().unwrap_or(0.0);
+        let status_code = profile["status_code"].as_u64().unwrap_or(0) as u16;
         
         self.update_internal(&method, &path, time_value);
+        
+        // Track status code
+        if status_code > 0 {
+            *self.status_codes.entry(status_code).or_insert(0) += 1;
+        }
     }
     
     fn update_internal(&mut self, method: &str, path: &str, time_value: f64) {

@@ -34,6 +34,10 @@ class AggregatedStats:
         """Get the top endpoints by request count."""
         return json.loads(self._impl.get_endpoint_distribution(limit))
 
+    def get_status_code_distribution(self) -> List[Dict]:
+        """Get the distribution of status codes."""
+        return json.loads(self._impl.get_status_code_distribution())
+
     def get_avg_response_time(self) -> float:
         """Get the average response time across all requests."""
         return self._impl.get_avg_response_time()
