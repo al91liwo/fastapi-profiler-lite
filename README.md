@@ -24,7 +24,7 @@ Monitoring API performance shouldn't require complex setups or external services
 
 - **Instant insights** - See which endpoints are slow without complex instrumentation
 - **Zero configuration** - Works out of the box with sensible defaults
-- **No external dependencies** - Everything runs within your FastAPI app
+- **Rust-powered statistics** - High-performance stats calculation using Rust
 - **Developer-friendly** - Designed for both development and lightweight production use
 
 ## Installation
@@ -62,6 +62,12 @@ That's it! Visit `/profiler` to see the performance dashboard.
 - **Request filtering** - Search and sort through captured requests
 - **Visual metrics** - Charts for response times and request distribution
 - **Minimal overhead** - Designed to have low performance impact
+
+## Technical Details
+
+- **Rust Core**: Statistics calculations are powered by a Rust extension for improved performance. Benchmarks comparing to NumPy will be published soon. Pre-built wheels are provided for all major platforms, but if you encounter any issues, please open a GitHub issue.
+
+- **UI Framework**: The dashboard uses [Tabler.io](https://tabler.io/), a premium and open-source admin dashboard template, providing a clean and modern interface.
 
 ## Documentation
 
