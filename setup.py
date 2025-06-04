@@ -27,7 +27,7 @@ setup(
         "jinja2>=3.1.2",
         "sqlparse>=0.4.0",
         "sqlalchemy>=1.4.0",
-        "fastapi-profiler-rust>=0.3.2"
+        "fastapi-profiler-rust>=0.3.2)"
     ],
     extras_require={
         "standard": ["uvicorn>=0.14.0"],
