@@ -1,3 +1,17 @@
+## [0.3.3](https://github.com/al91liwo/fastapi-profiler-lite/compare/v0.3.2...v0.3.3) (2025-06-04)
+
+
+### Bug Fixes
+
+* Enable instrumentation for AsyncEngine for async-slqalchemy ([9e67327](https://github.com/al91liwo/fastapi-profiler-lite/commit/9e67327d2e46b8061184fd3fe687420230fceb8d))
+
+
+### Chores
+
+* bump version to 0.3.2 [skip ci] ([b144d74](https://github.com/al91liwo/fastapi-profiler-lite/commit/b144d7418a7071808e7b5c8e6c5635c00000e479))
+* update fastapi-profiler-rust dependency to >=0.3.2 ([03f99ff](https://github.com/al91liwo/fastapi-profiler-lite/commit/03f99ff08eac716530be37ed2ed4623f7d2e1bf0))
+* update test cases for instrumentation to properly test profile tracking ([cf50e43](https://github.com/al91liwo/fastapi-profiler-lite/commit/cf50e43c6586a451893383d663f21e400b6334af))
+
 ## [0.3.2](https://github.com/al91liwo/fastapi-profiler-lite/compare/v0.3.1...v0.3.2) (2025-04-06)
 
 
