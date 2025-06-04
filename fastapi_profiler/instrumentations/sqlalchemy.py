@@ -29,9 +29,24 @@ class SQLAlchemyInstrumentation(BaseInstrumentation):
         try:
             engine_metadata = cls._extract_engine_metadata(engine)
 
+            # Handle AsyncEngine differently
+            is_async_engine = False
+            target_engine = engine
+
+            # Check if this is an AsyncEngine
+            if hasattr(engine, "sync_engine"):
+                is_async_engine = True
+                target_engine = engine.sync_engine
+            # Check if this is an async generator or coroutine (for testing)
+            elif hasattr(engine, "__aiter__") or hasattr(engine, "__await__"):
+                print(
+                    f"Warning: Received async generator or coroutine instead of AsyncEngine. Skipping instrumentation."
+                )
+                return
+
             # Store metadata on the engine for later use
-            if not hasattr(engine, "_profiler_metadata"):
-                engine._profiler_metadata = engine_metadata
+            if not hasattr(target_engine, "_profiler_metadata"):
+                target_engine._profiler_metadata = engine_metadata
 
                 # Use the standard SQLAlchemy event API
                 # Define event handlers
@@ -43,7 +58,7 @@ class SQLAlchemyInstrumentation(BaseInstrumentation):
                         context._stmt = stmt
                         context._params = params
                         context._engine_metadata = getattr(
-                            engine, "_profiler_metadata", {}
+                            target_engine, "_profiler_metadata", {}
                         )
                         context._query_type = cls._detect_query_type(stmt)
                     except Exception as e:
@@ -118,7 +133,7 @@ class SQLAlchemyInstrumentation(BaseInstrumentation):
 
                 try:
                     # Try using SQLAlchemy's event system
-                    @event.listens_for(engine, "before_cursor_execute")
+                    @event.listens_for(target_engine, "before_cursor_execute")
                     def _before_execute_wrapper(
                         conn, cursor, stmt, params, context, executemany
                     ):
@@ -126,7 +141,7 @@ class SQLAlchemyInstrumentation(BaseInstrumentation):
                             conn, cursor, stmt, params, context, executemany
                         )
 
-                    @event.listens_for(engine, "after_cursor_execute")
+                    @event.listens_for(target_engine, "after_cursor_execute")
                     def _after_execute_wrapper(
                         conn, cursor, stmt, params, context, executemany
                     ):
@@ -144,8 +159,11 @@ class SQLAlchemyInstrumentation(BaseInstrumentation):
                         f"event listeners: {str(e)}"
                     )
 
-            # Mark this engine as instrumented, engine_id
+            # Mark this engine as instrumented
+            # For AsyncEngine, we track both the async engine and its sync_engine
             cls._instrumented_engines.add(engine_id)
+            if is_async_engine:
+                cls._instrumented_engines.add(id(target_engine))
 
         except Exception as e:
             print(f"FastAPI Profiler: Failed to instrument engine {engine}: {str(e)}")
@@ -163,6 +181,11 @@ class SQLAlchemyInstrumentation(BaseInstrumentation):
             return
 
         try:
+            # Handle AsyncEngine
+            if hasattr(engine, "sync_engine"):
+                sync_engine_id = id(engine.sync_engine)
+                cls._instrumented_engines.discard(sync_engine_id)
+
             # SQLAlchemy doesn't provide a clean way to remove listeners AFAIK
             # TODO: investigate if there's a way to unregister event listeners safely
             # Remove from instrumented engines set
@@ -177,59 +200,82 @@ class SQLAlchemyInstrumentation(BaseInstrumentation):
         metadata = {}
 
         try:
+            # Handle AsyncEngine by using its sync_engine
+            if hasattr(engine, "sync_engine"):
+                # This is an AsyncEngine, get metadata from the sync_engine
+                sync_engine = engine.sync_engine
+                dialect = (
+                    sync_engine.dialect if hasattr(sync_engine, "dialect") else None
+                )
+                url = sync_engine.url if hasattr(sync_engine, "url") else None
+                # Mark as async engine in metadata
+                metadata["is_async"] = True
+            else:
+                # Regular Engine
+                sync_engine = engine
+                dialect = engine.dialect if hasattr(engine, "dialect") else None
+                url = engine.url if hasattr(engine, "url") else None
+                metadata["is_async"] = False
+
             # Get dialect name
-            if hasattr(engine, "dialect") and hasattr(engine.dialect, "name"):
-                dialect_name = str(engine.dialect.name).lower()
+            if dialect and hasattr(dialect, "name"):
+                dialect_name = str(dialect.name).lower()
                 metadata["dialect"] = dialect_name
 
                 # Format a display name based on URL and engine ID
                 engine_name = None
 
                 # Try to get a meaningful name from the URL
-                if hasattr(engine, "url"):
-                    url = str(engine.url)
+                if url:
+                    url_str = str(url)
                     # Try to extract database name from URL safely
                     # without revealing credentials
-                    if "/" in url:
-                        db_name = url.split("/")[-1]
+                    if "/" in url_str:
+                        db_name = url_str.split("/")[-1]
                         if db_name and db_name not in ("", "."):
                             # Remove extension if present
                             if "." in db_name:
                                 db_name = db_name.split(".")[0]
                             engine_name = f"{db_name.capitalize()}DB"
+                            # Add async prefix if it's an async engine
+                            if metadata["is_async"]:
+                                engine_name = f"Async{engine_name}"
 
                 # If we still don't have a name, use dialect with unique ID
                 if not engine_name:
-                    engine_id = id(engine) % 10000
-                    engine_name = f"{dialect_name.capitalize()}Engine_{engine_id:04d}"
+                    engine_id = id(sync_engine) % 10000
+                    prefix = "Async" if metadata["is_async"] else ""
+                    engine_name = (
+                        f"{prefix}{dialect_name.capitalize()}Engine_{engine_id:04d}"
+                    )
 
                 metadata["name"] = engine_name
 
                 # Also store version info if available
-                version_info = getattr(engine.dialect, "server_version_info", None)
+                version_info = getattr(dialect, "server_version_info", None)
                 if version_info:
                     if isinstance(version_info, tuple) and len(version_info) >= 3:
                         version_str = ".".join(str(x) for x in version_info[:3])
                         metadata["version"] = version_str
 
             # Get URL info (without credentials)
-            if hasattr(engine, "url"):
-                url = str(engine.url)
+            if url:
+                url_str = str(url)
                 # Remove username/password for security
-                safe_url = url.split("://")
+                safe_url = url_str.split("://")
                 if len(safe_url) > 1 and "@" in safe_url[1]:
                     credentials, rest = safe_url[1].split("@", 1)
                     safe_url = f"{safe_url[0]}://****:****@{rest}"
                     metadata["url"] = safe_url
                 else:
-                    metadata["url"] = "???"  # TODO: investigate
+                    metadata["url"] = url_str
 
             # Get engine name/id for identification
-            if hasattr(engine, "name"):
-                metadata["engine_name"] = engine.name
+            if hasattr(sync_engine, "name"):
+                metadata["engine_name"] = sync_engine.name
             else:
                 # Use object id as fallback
-                metadata["engine_id"] = id(engine)
+                metadata["engine_id"] = id(sync_engine)
 
         except Exception as e:
             print(f"FastAPI Profiler: Error extracting engine metadata: {str(e)}")
