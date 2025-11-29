@@ -1,3 +1,10 @@
+## [0.3.4](https://github.com/al91liwo/fastapi-profiler-lite/compare/v0.3.3...v0.3.4) (2025-11-29)
+
+
+### Bug Fixes
+
+* include app root_path in dashboard static file URLs ([6e2a806](https://github.com/al91liwo/fastapi-profiler-lite/commit/6e2a806a4a29000c8d4b52507581dfa3c15bc049))
+
 ## [0.3.3](https://github.com/al91liwo/fastapi-profiler-lite/compare/v0.3.2...v0.3.3) (2025-06-04)
 
 
