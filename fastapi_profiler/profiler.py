@@ -66,10 +66,15 @@ class Profiler:
         with open(template_path) as f:
             template = f.read()
 
-        # Pre-render the template
-        return template.replace(
-            "{{js_path}}", f"{self.dashboard_path}/static/js/dashboard.js"
-        ).replace("{{dashboard_path}}", self.dashboard_path)
+        # Pre-render the template with root_path support
+        root_path = getattr(self.app, "root_path", "").rstrip("/")
+
+        full_dashboard_path = f"{root_path}{self.dashboard_path}"
+        js_path = f"{full_dashboard_path}/static/js/dashboard.js"
+
+        return template.replace("{{js_path}}", js_path).replace(
+            "{{dashboard_path}}", full_dashboard_path
+        )
 
     def _render_dashboard(self):
         """Return the pre-rendered dashboard HTML."""
